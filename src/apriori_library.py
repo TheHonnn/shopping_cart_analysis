@@ -104,7 +104,37 @@ class DataCleaner:
 
         print(f"Kích thước sau làm sạch: {self.df_uk.shape}")
         return self.df_uk
-
+    def compute_rfm(self):
+            """
+            Tính toán chỉ số RFM (Recency, Frequency, Monetary)
+            """
+            print("📊 Đang tính toán chỉ số RFM...")
+            
+            # 1. Đảm bảo InvoiceDate là dạng ngày tháng
+            self.df['InvoiceDate'] = pd.to_datetime(self.df['InvoiceDate'])
+            
+            # 2. Tạo cột Tổng tiền (Total = Quantity * UnitPrice)
+            self.df['TotalCost'] = self.df['Quantity'] * self.df['UnitPrice']
+            
+            # 3. Chọn ngày mốc (là ngày cuối cùng trong dữ liệu + 1 ngày)
+            snapshot_date = self.df['InvoiceDate'].max() + pd.Timedelta(days=1)
+            
+            # 4. Tính toán RFM
+            rfm = self.df.groupby('CustomerID').agg({
+                'InvoiceDate': lambda x: (snapshot_date - x.max()).days, # Recency
+                'InvoiceNo': 'nunique',                                  # Frequency
+                'TotalCost': 'sum'                                       # Monetary
+            })
+            
+            # Đổi tên cột cho dễ hiểu
+            rfm.rename(columns={
+                'InvoiceDate': 'Recency',
+                'InvoiceNo': 'Frequency',
+                'TotalCost': 'Monetary'
+            }, inplace=True)
+            
+            print(f"✅ Đã tính xong RFM cho {len(rfm)} khách hàng.")
+            return rfm
     def create_time_features(self):
         """Create time-based features."""
         if self.df_uk is None:
