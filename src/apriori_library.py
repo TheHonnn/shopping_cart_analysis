@@ -24,21 +24,16 @@ import networkx as nx
 # 1. DATA CLEANER
 # =========================================================
 
+import pandas as pd
+import numpy as np
+import os
+
 class DataCleaner:
     """
     A class for cleaning and preprocessing retail transaction data.
-
-    This class handles data loading, cleaning operations, and basic exploratory
-    data analysis for online retail datasets.
     """
 
     def __init__(self, data_path):
-        """
-        Initialize the DataCleaner with data path.
-
-        Args:
-            data_path (str): Path to the raw data file
-        """
         self.data_path = data_path
         self.df = None
         self.df_uk = None
@@ -47,9 +42,6 @@ class DataCleaner:
     def load_data(self):
         """
         Load and display basic information about the dataset.
-
-        Returns:
-            pd.DataFrame: Loaded dataframe
         """
         dtype = dict(
             InvoiceNo=np.object_,
@@ -57,7 +49,7 @@ class DataCleaner:
             Description=np.object_,
             Quantity=np.int64,
             UnitPrice=np.float64,
-            CustomerID=np.object_,
+            CustomerID=np.object_,  # Load raw, giữ nguyên NaN để xử lý sau
             Country=np.object_,
         )
 
@@ -68,127 +60,64 @@ class DataCleaner:
             dtype=dtype,
         )
 
-        # Chuyển CustomerID thành format 6 ký tự
+        print(f"Kích thước dữ liệu gốc: {self.df.shape}")
+        return self.df
+
+    def clean_data(self):
+        """
+        Clean the dataset by removing invalid records and focusing on UK customers.
+        """
+        if self.df is None:
+            raise ValueError("Data not loaded. Please call load_data() first.")
+        
+        print("--- BẮT ĐẦU LÀM SẠCH ---")
+        
+        # 1. Thêm cột TotalPrice
+        self.df["TotalPrice"] = self.df["Quantity"] * self.df["UnitPrice"]
+                                                                                
+        # 2. Loại bỏ các hóa đơn bị hủy (bắt đầu bằng 'C')
+        self.df = self.df[~self.df["InvoiceNo"].astype(str).str.startswith("C")]
+     
+        # 3. Lọc bỏ CustomerID thiếu (QUAN TRỌNG: Làm bước này khi dữ liệu còn là NaN)
+        print("Đang lọc bỏ các bản ghi thiếu CustomerID...")
+        original_len = len(self.df)
+        self.df = self.df.dropna(subset=['CustomerID'])
+        print(f"-> Đã xóa {original_len - len(self.df)} dòng thiếu CustomerID")
+        
+        # 4. Format CustomerID (Chỉ làm sau khi đã xóa NaN)
+        # Chuyển thành string, bỏ đuôi .0 và thêm số 0 ở đầu nếu cần
         self.df["CustomerID"] = (
             self.df["CustomerID"]
             .astype(str)
             .str.replace(".0", "", regex=False)
             .str.zfill(6)
         )
-
-        print(f"Kích thước dữ liệu: {self.df.shape}")
-        print(f"Số bản ghi: {len(self.df):,}")
-
-        return self.df
-
-    def clean_data(self):
-        """
-        Clean the dataset by removing invalid records and focusing on UK customers.
-
-        Returns:
-            pd.DataFrame: Cleaned UK dataset
-        """
-        if self.df is None:
-            raise ValueError("Data not loaded. Please call load_data() first.")
         
-        # Thêm cột TotalPrice
-        self.df["TotalPrice"] = self.df["Quantity"] * self.df["UnitPrice"]
-
-        # Loại bỏ các hóa đơn bị hủy (bắt đầu bằng 'C')
-        self.df = self.df[~self.df["InvoiceNo"].astype(str).str.startswith("C")]
-
-        # Chỉ tập trung vào khách hàng UK
+        # 5. Chỉ tập trung vào khách hàng UK
+        print("Đang lọc dữ liệu cho khách hàng tại Vương quốc Anh...")
         self.df_uk = self.df[self.df["Country"] == "United Kingdom"].copy()
 
-        # Loại bỏ các sản phẩm có quantity hoặc price không hợp lệ
+        # 6. Loại bỏ Quantity <= 0 và UnitPrice <= 0
         self.df_uk = self.df_uk[
             (self.df_uk["Quantity"] > 0) & (self.df_uk["UnitPrice"] > 0)
         ]
 
-        # Bỏ description NA
-        self.df_uk = self.df_uk.dropna(subset=["Description"])
-
+        print(f"Kích thước sau làm sạch: {self.df_uk.shape}")
         return self.df_uk
 
     def create_time_features(self):
-        """
-        Create time-based features for analysis.
-        """
+        """Create time-based features."""
         if self.df_uk is None:
-            raise ValueError("Cleaned UK data not available. Call clean_data() first.")
+            raise ValueError("Cleaned UK data not available.")
 
         self.df_uk["DayOfWeek"] = self.df_uk["InvoiceDate"].dt.dayofweek
         self.df_uk["HourOfDay"] = self.df_uk["InvoiceDate"].dt.hour
-
-    def add_total_price(self):
-        """
-        Add TotalPrice column (Quantity * UnitPrice) to cleaned UK data.
-        """
-        if self.df_uk is None:
-            raise ValueError("Cleaned UK data not available. Call clean_data() first.")
-
-        self.df_uk["TotalPrice"] = self.df_uk["Quantity"] * self.df_uk["UnitPrice"]
         return self.df_uk
 
-    def compute_rfm(self, snapshot_date=None):
-        """
-        Compute RFM (Recency, Frequency, Monetary) for each customer based on cleaned UK data.
-
-        Args:
-            snapshot_date (datetime or str, optional):
-                Reference date for Recency calculation.
-                - If None: use max(InvoiceDate) + 1 day.
-
-        Returns:
-            pd.DataFrame: RFM dataframe with columns [CustomerID, Recency, Frequency, Monetary]
-        """
-        if self.df_uk is None:
-            raise ValueError("Cleaned UK data not available. Call clean_data() first.")
-
-        df = self.df_uk.copy()
-
-        # Đảm bảo có TotalPrice
-        if "TotalPrice" not in df.columns:
-            df["TotalPrice"] = df["Quantity"] * df["UnitPrice"]
-
-        # Xác định snapshot_date
-        if snapshot_date is None:
-            snapshot_date = df["InvoiceDate"].max() + pd.Timedelta(days=1)
-        else:
-            # Cho phép truyền vào dạng string 'YYYY-MM-DD'
-            if isinstance(snapshot_date, str):
-                snapshot_date = pd.to_datetime(snapshot_date)
-
-        # Tính RFM
-        rfm = df.groupby("CustomerID").agg(
-            {
-                "InvoiceDate": lambda x: (snapshot_date - x.max()).days,  # Recency
-                "InvoiceNo": "nunique",  # Frequency
-                "TotalPrice": "sum",     # Monetary
-            }
-        )
-
-        rfm.rename(
-            columns={
-                "InvoiceDate": "Recency",
-                "InvoiceNo": "Frequency",
-                "TotalPrice": "Monetary",
-            },
-            inplace=True,
-        )
-
-        self.rfm_data = rfm.reset_index()
-        return self.rfm_data
-
     def save_cleaned_data(self, output_dir="../data/processed"):
-        """
-        Save cleaned data to specified directory.
-
-        Args:
-            output_dir (str): Output directory path
-        """
+        """Save cleaned data."""
         if self.df_uk is None:
-            raise ValueError("Cleaned UK data not available. Call clean_data() first.")
+            raise ValueError("Cleaned UK data not available.")
 
         os.makedirs(output_dir, exist_ok=True)
         output_path = f"{output_dir}/cleaned_uk_data.csv"
