@@ -70,11 +70,12 @@ rules.head()
 
 
 ## 6. Insight từ Kết quả
-**Insight #1:**  
-**Insight #2:**  
-**Insight #3:**  
-**Insight #4:**  
-**Insight #5:**  
+•	Insight #1 (Nhóm Ngôi Sao - Cơ hội vàng): Các cặp sản phẩm có Support cao (>2%) và Lift cao (>2) (ví dụ: Tách trà và Đĩa lót) là nguồn doanh thu chủ lực. Khách hàng mua chúng thường xuyên và luôn mua kèm nhau. Đây là nhóm an toàn nhất để chạy khuyến mãi.
+•	Insight #2 (Nhóm Ngách - Khách hàng trung thành): Xuất hiện nhóm sản phẩm có Support thấp (<1.5%) nhưng Lift cực cao (>5) (ví dụ: Các set trang trí tiệc chuyên biệt). Dù ít người mua, nhưng hễ ai đã mua sản phẩm A thì gần như 100% sẽ mua sản phẩm B. Đây là dấu hiệu của tệp khách hàng chuyên biệt (niche market).
+•	Insight #3 (Cảnh báo "Luật Ảo"): Có nhiều luật có Confidence rất cao nhưng Lift $\approx$ 1 (ví dụ: Sản phẩm bất kỳ -> Túi Nilon/Phí ship). Mối quan hệ này là ngẫu nhiên hoặc hiển nhiên do độ phổ biến quá lớn của sản phẩm hệ quả. Việc đầu tư marketing vào nhóm này là lãng phí.
+•	Insight #4 (Hành vi sưu tập theo màu sắc): Chỉ số Lift tăng vọt trong các luật kết hợp giữa các sản phẩm cùng loại nhưng khác màu (ví dụ: Cốc màu hồng đi với Cốc màu xanh). Khách hàng không mua thay thế mà mua bổ sung để đủ bộ sưu tập.
+•	Insight #5 (Tính cụm của sản phẩm): Các sản phẩm "Tiệc tùng" (Đĩa giấy, khăn ăn) và "Nội trợ" (Hộp đựng gia vị) tách biệt thành các cụm riêng biệt trên biểu đồ mạng lưới. Cross-sell chéo giữa hai nhóm này sẽ không hiệu quả bằng cross-sell nội bộ trong nhóm.
+
 
 ## 7. Kết luận & Đề xuất Kinh doanh
 - Gợi ý cross-sell…
